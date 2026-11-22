@@ -122,4 +122,123 @@ final class Sweeper implements Runnable {
         if (e.isInsideVehicle() || !e.getPassengers().isEmpty()) return true;
         if (e instanceof Item it) return pl.protectedItem(it);
         return false;
-                      }
+                      }    private void processChunk(Chunk c) {
+        Entity[] ents = c.getEntities();
+        UUID wid = c.getWorld().getUID();
+        int[] cnt = new int[Group.values().length];
+        EnumMap<Group, List<Entity>> rem = null;
+        World cw = c.getWorld();
+        boolean zone = pl.inZone(cw, c.getX(), c.getZ());
+        int merged = (pl.mergeEnabled && !zone) ? mergeItems(ents) : 0;
+        for (Entity e : ents) {
+            if (!e.isValid()) continue;
+            Group g = Group.of(e);
+            if (g == Group.OTHER) continue;
+            cnt[g.ordinal()]++;
+            boolean prot = zone || isProtected(e);
+
+            if (g.isMob() && e instanceof Mob m) {
+                PersistentDataContainer pdc = e.getPersistentDataContainer();
+                boolean off = pdc.has(aiKey, PersistentDataType.BYTE);
+                boolean sleep = pl.aiEnabled && !prot && !pl.aiExclude.contains(e.getType())
+                        && !near(wid, e.getLocation().getX(), e.getLocation().getZ(), pl.awareDist(cw));
+                if (sleep) {
+                    if (off) sleepBuilding++;
+                    else if (m.isAware()) { m.setAware(false); pdc.set(aiKey, PersistentDataType.BYTE, (byte) 1); sleepBuilding++; }
+                } else if (off) {
+                    m.setAware(true);
+                    pdc.remove(aiKey);
+                }
+            }
+
+            if (!prot && pl.limit(g, cw) >= 0 && ents.length > pl.limit(g, cw)) {
+                if (rem == null) rem = new EnumMap<>(Group.class);
+                rem.computeIfAbsent(g, k -> new ArrayList<>()).add(e);
+            }
+        }
+        if (rem != null) {
+            for (Map.Entry<Group, List<Entity>> en : rem.entrySet()) {
+                Group g = en.getKey();
+                int lim = pl.limit(g, cw);
+                int extra = cnt[g.ordinal()] - lim;
+                if (extra <= 0) continue;
+                List<Entity> l = en.getValue();
+                l.sort((a, b) -> Integer.compare(b.getTicksLived(), a.getTicksLived()));
+                for (int i = 0; i < extra && i < l.size(); i++) {
+                    l.get(i).remove();
+                    cnt[g.ordinal()]--;
+                    removed++;
+                }
+            }
+        }
+        double weighted = cnt[Group.HOSTILE.ordinal()] + cnt[Group.ANIMAL.ordinal()] + cnt[Group.WATER.ordinal()] * 0.5
+                + cnt[Group.AMBIENT.ordinal()] * 0.2 + cnt[Group.VILLAGER.ordinal()] * 2 + cnt[Group.ITEM.ordinal()] * 0.5
+                + cnt[Group.XP.ordinal()] * 0.3 + cnt[Group.VEHICLE.ordinal()] * 1.5 + cnt[Group.TNT.ordinal()] * 2;
+        if (weighted >= 10) {
+            String who = nearestName(wid, c.getX() * 16 + 8, c.getZ() * 16 + 8, 96);
+            if (who != null) {
+                Culprit cu = scoreBuilding.computeIfAbsent(who, Culprit::new);
+                cu.score += weighted;
+                if (weighted > cu.best) { cu.best = weighted; cu.w = c.getWorld(); cu.cx = c.getX(); cu.cz = c.getZ(); }
+            }
+        }
+        building.computeIfAbsent(wid, k -> new HashMap<>()).put(key(c.getX(), c.getZ()), cnt);
+    }
+
+    /** Merge identical item entities of one chunk into full stacks. Returns removed count. */
+    private int mergeItems(Entity[] ents) {
+        List<Item> items = new ArrayList<>();
+        for (Entity e : ents) if (e instanceof Item it && it.isValid() && it.getTicksLived() > 10) items.add(it);
+        if (items.size() < pl.mergeMin) return 0;
+        int gone = 0;
+        for (int i = 0; i < items.size(); i++) {
+            Item a = items.get(i);
+            if (!a.isValid()) continue;
+            ItemStack sa = a.getItemStack();
+            int max = sa.getMaxStackSize();
+            if (sa.getAmount() >= max) continue;
+            boolean changed = false;
+            for (int j = i + 1; j < items.size() && sa.getAmount() < max; j++) {
+                Item b = items.get(j);
+                if (!b.isValid()) continue;
+                ItemStack sb = b.getItemStack();
+                if (!sa.isSimilar(sb)) continue;
+                int move = Math.min(max - sa.getAmount(), sb.getAmount());
+                sa.setAmount(sa.getAmount() + move);
+                changed = true;
+                if (move >= sb.getAmount()) { b.remove(); gone++; }
+                else { sb.setAmount(sb.getAmount() - move); b.setItemStack(sb); }
+            }
+            if (changed) a.setItemStack(sa);
+        }
+        removed += 0;
+        return gone;
+    }
+
+    /** Wake every mob we put to sleep (used on disable). */
+    void wakeAll() {
+        for (World w : Bukkit.getWorlds())
+            for (Entity e : w.getEntities())
+                if (e instanceof Mob m && e.getPersistentDataContainer().has(aiKey, PersistentDataType.BYTE)) {
+                    m.setAware(true);
+                    e.getPersistentDataContainer().remove(aiKey);
+                }
+    }
+
+    /** Heaviest chunks: {World, cx, cz, total, int[] counts} */
+    List<Object[]> top(int n) {
+        List<Object[]> all = new ArrayList<>();
+        for (Map.Entry<UUID, Map<Long, int[]>> we : counts.entrySet()) {
+            World w = Bukkit.getWorld(we.getKey());
+            if (w == null) continue;
+            for (Map.Entry<Long, int[]> ce : we.getValue().entrySet()) {
+                int t = 0;
+                for (int v : ce.getValue()) t += v;
+                long k = ce.getKey();
+                all.add(new Object[]{w, (int) k, (int) (k >> 32), t, ce.getValue()});
+            }
+        }
+        all.sort((a, b) -> Integer.compare((int) b[3], (int) a[3]));
+        return all.subList(0, Math.min(n, all.size()));
+    }
+            }
