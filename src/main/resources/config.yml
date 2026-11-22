@@ -1,0 +1,105 @@
+# ===== RWLag config =====
+prefix: "<gradient:#ff5555:#ffaa00><bold>RWLag</bold></gradient> <dark_gray>»</dark_gray> "
+
+# Max entities PER CHUNK (-1 = unlimited). Oldest extra entities are removed.
+# Named, leashed, tamed, boss, NPC and riding entities are never removed.
+entity-limits:
+  hostile: 25
+  animal: 30
+  water: 15
+  ambient: 5
+  villager: 40
+  item: 100
+  xp: 40
+  vehicle: 12
+  tnt: 80
+  hard-cap-multiplier: 2.0   # blocks NEW items/mobs above limit*multiplier (0 = off)
+
+# Per-world overrides (world folder names). Multiplies entity limits; aware-distance overrides AI sleep distance.
+worlds:
+  world_nether:
+    limit-multiplier: 0.8
+  world_the_end:
+    limit-multiplier: 0.6
+    aware-distance: 30
+
+# Write a diagnostic file to plugins/RWLag/reports/ every time lag mode turns on
+report-on-lag-mode: true
+
+# Merges nearby identical dropped items into full stacks (fewer item entities)
+item-merge:
+  enabled: true
+  min-items-in-chunk: 6
+
+# Max hoppers per chunk (hopper farms are a top lag source). Bypass: rwlag.bypass
+hopper-limiter:
+  enabled: true
+  max-per-chunk: 40
+
+# Turns off AI of mobs that are far from every player (big CPU saving)
+ai-optimizer:
+  enabled: true
+  aware-distance: 40
+  exclude-types: []          # e.g. [VILLAGER, IRON_GOLEM]
+
+# Periodic ground clear with countdown
+auto-clear:
+  enabled: true
+  interval-seconds: 600      # 600 = 10 minutes. Change in game: /rwlag cleartime 10m
+  warn-at: [60, 30, 10, 3, 2, 1]   # warn players when this many seconds are left
+  warn-title: true           # big number on screen for the last 10 seconds
+  warn-sound: "minecraft:block.note_block.pling"   # empty = no sound
+  message-warn: "<yellow>Ground items will be cleared in <white><time><yellow>!"
+  message-done: "<green>Cleared <white><items><green> items, <white><orbs><green> orbs, <white><other><green> other entities."
+  clear-items: true
+  clear-xp-orbs: true
+  clear-arrows: true
+  clear-hostile: false
+  clear-animals: false
+  min-item-age-ticks: 60
+  item-whitelist: [NETHERITE_INGOT, NETHERITE_SCRAP, ELYTRA, TOTEM_OF_UNDYING, SHULKER_BOX, NETHER_STAR]
+
+# Natural mob spawning. true = normal. false = NO automatic spawns in the world,
+# but players can still spawn mobs (spawn eggs, spawners, breeding, commands).
+# Change in game: /rwlag mobspawn on|off
+mob-spawn:
+  natural: true
+  blocked-reasons: [NATURAL, CHUNK_GEN, PATROL, VILLAGE_INVASION, REINFORCEMENTS]
+
+# Stops redstone clocks / lag machines per chunk
+redstone-limiter:
+  enabled: true
+  max-updates-per-chunk-per-second: 1500
+  block-seconds: 10
+
+# Automatic emergency mode when TPS drops
+lag-mode:
+  enabled: true
+  enable-mspt: 45
+  disable-mspt: 35
+  enable-tps: 17.0
+  disable-tps: 19.0
+  cancel-natural-spawns: true
+  view-distance: 6
+  simulation-distance: 4
+  limit-multiplier: 0.5      # entity limits and redstone limit become x0.5
+  emergency-clear: true
+
+# Discord alerts (leave webhook-url empty to disable)
+discord:
+  webhook-url: ""
+  cooldown-seconds: 30
+
+# Lowers view distance for high-ping players (saves bandwidth + CPU)
+ping-view:
+  enabled: true
+  tiers: ["100:6", "150:5", "250:4"]   # "ping_ms:view_distance"
+
+memory:
+  alert-percent: 90
+  emergency-clear: true
+  run-gc: false              # System.gc() on alert (usually leave false)
+
+sweeper:
+  interval-ticks: 60         # pause between full sweeps
+  max-ms-per-tick: 1.5       # CPU budget per tick while sweeping
