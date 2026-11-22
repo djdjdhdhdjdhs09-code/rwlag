@@ -1,0 +1,17 @@
+name: RWLag
+main: rw.lag.RWLag
+version: 1.1
+api-version: '1.21.11'
+description: Anti-lag suite for big servers
+commands:
+  rwlag:
+    description: RWLag main command
+    usage: /rwlag <gui|status|chunks|culprits|entities|graph|monitor|report|protect|discord|clear|cleartime|mobspawn|lagmode|reload>
+    aliases: [rwl]
+permissions:
+  rwlag.admin:
+    default: op
+  rwlag.notify:
+    default: op
+  rwlag.bypass:
+    default: op
