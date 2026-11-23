@@ -122,7 +122,8 @@ public class RWLag extends JavaPlugin implements TabExecutor {
         Bukkit.getScheduler().runTaskTimer(this, sweeper, 40L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, this::monitor, 100L, 100L);
                 Network net = new Network(this);
-        Bukkit.getScheduler().runTaskTimer(this, net::tick, 600L, 100L);
+        autoFix = new AutoFix(this);
+        Bukkit.getScheduler().runTaskTimer(this, autoFix::tick, 200L, 40L);
         Bukkit.getScheduler().runTaskTimer(this, () -> { guards.tick(); clearTick(); monitorTick(); }, 20L, 20L);
     }
 
