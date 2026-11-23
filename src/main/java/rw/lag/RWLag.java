@@ -27,7 +27,7 @@ public class RWLag extends JavaPlugin implements TabExecutor {
     static final MiniMessage MM = MiniMessage.miniMessage();
 
     Sweeper sweeper;
-    Guards guards;
+    AutoFix autoFix;
     boolean lagMode;
 
     // ---- cached config ----
