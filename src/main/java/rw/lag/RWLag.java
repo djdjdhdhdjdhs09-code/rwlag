@@ -246,7 +246,7 @@ public class RWLag extends JavaPlugin implements TabExecutor {
             broadcast(msgWarn.replace("<time>", fmtTime(clearRemaining)));
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (warnSound != null && !warnSound.isEmpty()) p.playSound(p.getLocation(), warnSound, 0.6f, 1.2f);
-                if (warnTitle && clearRemaining <= 10)
+                 if (false && clearRemaining <= 10)
                     p.showTitle(Title.title(MM.deserialize("<red><bold>" + clearRemaining),
                             MM.deserialize("<yellow>Items will be cleared!"),
                             Title.Times.times(java.time.Duration.ZERO, java.time.Duration.ofMillis(900), java.time.Duration.ZERO)));
